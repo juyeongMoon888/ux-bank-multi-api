@@ -1,0 +1,22 @@
+# Build
+target/
+build/
+out/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.h2.db
+
+# Node (if applicable)
+node_modules/
+dist/
+api/src/main/resources/application.yml
