@@ -1,0 +1,38 @@
+package com.mybank.multibank.service.transfer.model;
+
+import com.mybank.multibank.domain.AccountStatus;
+import com.mybank.multibank.domain.BankType;
+import com.mybank.multibank.domain.Idempotency;
+import com.mybank.multibank.domain.TransactionStatus;
+import com.mybank.multibank.domain.account.Account;
+import com.mybank.multibank.domain.account.AccountRepository;
+import com.mybank.multibank.domain.transaction.TransactionRepository;
+import com.mybank.multibank.domain.transaction.Transactions;
+import com.mybank.multibank.dto.*;
+import com.mybank.multibank.global.code.ErrorCode;
+import com.mybank.multibank.global.exception.user.CustomException;
+import com.mybank.multibank.repository.IdempotencyRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class ExternalHandler {
+
+    private final TransactionRepository txRepo;
+
+    public ExAccConfirmRes confirm(ExAccConfirmReq req) {
+        //확인 플래그만
+        Transactions tx = txRepo.findByIdForUpdate(req.getExTxId())
+                .orElseThrow(() -> new CustomException(ErrorCode.EXTERNAL_TX_NOT_FOUND));
+
+        if (tx.isPartnerConfirmed()) {
+            return ExAccConfirmRes.builder().complete(true).successCode("ALREADY_CONFIRMED").build();
+        }
+        tx.setPartnerConfirmed(true);          // 메타만 갱신 (timestamp 필드도 좋음)
+        txRepo.save(tx);
+
+        return ExAccConfirmRes.builder().complete(true).successCode("CONFIRMED").build();
+    }
+
+}
