@@ -29,7 +29,7 @@ public class ExternalHandler {
         if (tx.isPartnerConfirmed()) {
             return ExAccConfirmRes.builder().complete(true).successCode("ALREADY_CONFIRMED").build();
         }
-        tx.setPartnerConfirmed(true);          // 메타만 갱신 (timestamp 필드도 좋음)
+        tx.setPartnerConfirmed(true);          // 메타만 갱신
         txRepo.save(tx);
 
         return ExAccConfirmRes.builder().complete(true).successCode("CONFIRMED").build();
