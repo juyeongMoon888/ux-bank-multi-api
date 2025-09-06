@@ -1,8 +1,6 @@
 package com.mybank.multibank.service.transfer.model;
 
-import com.mybank.multibank.domain.AccountStatus;
 import com.mybank.multibank.domain.BankType;
-import com.mybank.multibank.domain.Idempotency;
 import com.mybank.multibank.domain.TransactionStatus;
 import com.mybank.multibank.domain.account.Account;
 import com.mybank.multibank.domain.account.AccountRepository;
@@ -24,7 +22,7 @@ public class ExternalHandler {
     private final AccountRepository accRepo;
 
     public ExAccWithdrawRes withdraw(ExAccWithdrawReq req) {
-        //멱등: 이미 처리된 키면 성공 재응답
+        //멱등: 이미 처리된 키면 성공 재응답 (중복 재시도 처리)
         Transactions existing = txRepo.findByIdempotencyKeyAndOperationType(
                 req.getIdempotencyKey(), OperationType.WITHDRAW).orElse(null);
         if (existing != null) {
@@ -38,6 +36,14 @@ public class ExternalHandler {
 
         Account from = accRepo.findByBankAndAccountNumber(req.getFromBank(), req.getFromAccountNumber())
                 .orElseThrow(null);
+        // 계좌 없음 → approved=false
+        if (from == null) {
+            return ExAccWithdrawRes.builder()
+                    .approved(false)
+                    .code(ErrorCode.ACCOUNT_NOT_FOUND.name())
+                    .message(ErrorCode.ACCOUNT_NOT_FOUND.getMessageKey())
+                    .build();
+        }
 
         long before = from.getBalance();
         from.withdraw(req.getAmount());
