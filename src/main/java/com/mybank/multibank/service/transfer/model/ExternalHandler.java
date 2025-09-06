@@ -24,6 +24,18 @@ public class ExternalHandler {
     private final AccountRepository accRepo;
 
     public ExAccWithdrawRes withdraw(ExAccWithdrawReq req) {
+        //멱등: 이미 처리된 키면 성공 재응답
+        Transactions existing = txRepo.findByIdempotencyKeyAndOperationType(
+                req.getIdempotencyKey(), OperationType.WITHDRAW).orElse(null);
+        if (existing != null) {
+            return ExAccWithdrawRes.builder()
+                    .approved(true)
+                    .code(SuccessCode.WITHDRAW_OK.name())
+                    .message(SuccessCode.WITHDRAW_OK.getMessageKey())
+                    .exTxId(existing.getId())
+                    .build();
+        }
+
         Account from = accRepo.findByBankAndAccountNumber(req.getFromBank(), req.getFromAccountNumber())
                 .orElseThrow(null);
 
