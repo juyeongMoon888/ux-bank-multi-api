@@ -205,14 +205,19 @@ public class ExternalHandler {
 
         // 5) 보상 레그 생성
         Transactions refund = Transactions.builder()
-                .operationType(OperationType.REFUND)
                 .account(from)
+                .operationType(OperationType.REFUND)
+                .toBank(txW.getToBank())
+                .toAccountNumber(txW.getToAccountNumber())
                 .amount(txW.getAmount())
                 .balanceBefore(before)
                 .balanceAfter(after)
-                .exTxId(txW.getId())
-                .transactionStatus(TransactionStatus.COMPLETED)
                 .memo("refund for tx#" + txW.getId())
+                .idempotencyKey(txW.getIdempotencyKey())
+                .fromAccountNumber(txW.getFromAccountNumber())
+                .fromBank(txW.getFromBank())
+                .transactionStatus(TransactionStatus.COMPLETED)
+                .exTxId(txW.getId())
                 .build();
         txRepo.save(refund);
         txRepo.flush();
