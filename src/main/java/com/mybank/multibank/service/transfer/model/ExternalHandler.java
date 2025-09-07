@@ -172,4 +172,56 @@ public class ExternalHandler {
         return ExAccConfirmRes.builder().complete(true).successCode("CONFIRMED").build();
     }
 
+    public ExAccCancelRes cancel(ExAccCancelReq req) {
+        // 1) 출금 레그 (락) 조회
+        Transactions txW = txRepo.findByIdForUpdate(req.getExTxId())
+                .orElseThrow(() -> new CustomException(ErrorCode.EXTERNAL_TX_NOT_FOUND));
+
+        // 2) 타입/상태 검증
+        if (txW.getOperationType() != OperationType.WITHDRAW) {
+            throw new IllegalArgumentException("ErrorCode.INVALID_TX_TYPE");
+        }
+
+        if (Boolean.TRUE.equals(txW.isPartnerConfirmed())) {
+            //파트너 확정 후 취소 금지
+            throw new IllegalArgumentException("ErrorCode.ALREADY_CONFIRM");
+        }
+
+        if (txW.getTransactionStatus() == TransactionStatus.CANCELED) {
+            return ExAccCancelRes.builder()
+                    .canceled(true)
+                    .code("ALREADY_CANCELED")
+                    .build();
+        }
+
+        // 3) 계좌 조회 (락) 레그 기준
+        Account from = accRepo.findByBankAndAccountNumber(txW.getFromBank().name(), txW.getFromAccountNumber())
+                .orElseThrow( () -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
+
+        // 4) 잔액 보상
+        long before = from.getBalance();
+        long after = before + txW.getAmount();
+        from.setBalance(after);
+
+        // 5) 보상 레그 생성
+        Transactions refund = Transactions.builder()
+                .operationType(OperationType.REFUND)
+                .account(from)
+                .amount(txW.getAmount())
+                .balanceBefore(before)
+                .balanceAfter(after)
+                .exTxId(txW.getId())
+                .transactionStatus(TransactionStatus.COMPLETED)
+                .memo("refund for tx#" + txW.getId())
+                .build();
+        txRepo.save(refund);
+        txRepo.flush();
+
+        //6) 성공 응답
+        return ExAccCancelRes.builder()
+                .canceled(true)
+                .code("CANCELED")
+                .build();
+    }
+
 }
