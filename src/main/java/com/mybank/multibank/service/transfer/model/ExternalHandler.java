@@ -23,6 +23,74 @@ public class ExternalHandler {
     private final TransactionRepository txRepo;
     private final AccountRepository accRepo;
 
+    public ExAccDepositRes deposit(ExAccDepositReq req) {
+        //멱등: 이미 처리된 키면 성공 재응답 (중복 재시도 처리)
+        Transactions existing = txRepo.findByIdempotencyKeyAndOperationType(
+                req.getIdempotencyKey(), OperationType.DEPOSIT).orElse(null);
+        if (existing != null) {
+            return ExAccDepositRes.builder()
+                    .success(true)
+                    .code(SuccessCode.DEPOSIT_OK.name())
+                    .message(SuccessCode.DEPOSIT_OK.getMessageKey())
+                    .exTxId(existing.getId())
+                    .build();
+        }
+
+        Account to = accRepo.findByBankAndAccountNumber(req.getToBank(), req.getToAccountNumber())
+                .orElseThrow(null);
+        // 계좌 없음 → success=false
+        if (to == null) {
+            return ExAccDepositRes.builder()
+                    .success(false)
+                    .code(ErrorCode.ACCOUNT_NOT_FOUND.name())
+                    .message(ErrorCode.ACCOUNT_NOT_FOUND.getMessageKey())
+                    .build();
+        }
+        // 비지니스 거절 → success=false
+        else if (to.getStatus().equals(AccountStatus.CLOSED)) {
+            return ExAccDepositRes.builder()
+                    .success(false)
+                    .code(RejectCode.ACCOUNT_CLOSED.name())
+                    .message(RejectCode.ACCOUNT_CLOSED.getMessageKey())
+                    .build();
+        }
+
+        else if (to.getStatus().equals(AccountStatus.FROZEN)) {
+            return ExAccDepositRes.builder()
+                    .success(false)
+                    .code(RejectCode.ACCOUNT_FROZEN.name())
+                    .message(RejectCode.ACCOUNT_FROZEN.getMessageKey())
+                    .build();
+        }
+
+        long before = to.getBalance();
+        to.deposit(req.getAmount());
+
+        //depositLeg 생성
+        Transactions depositLeg = Transactions.builder()
+                .account(to)
+                .operationType(OperationType.DEPOSIT)
+                .toBank(req.getToBank())
+                .toAccountNumber(req.getToAccountNumber())
+                .amount(req.getAmount())
+                .balanceBefore(before)
+                .balanceAfter(to.getBalance())
+                .memo(req.getMemo())
+                .idempotencyKey(req.getIdempotencyKey())
+                .fromBank(BankType.valueOf(req.getFromBank()))
+                .fromAccountNumber(req.getFromAccountNumber())
+                .transactionStatus(TransactionStatus.COMPLETED)
+                .build();
+        txRepo.save(depositLeg);
+
+        return ExAccDepositRes.builder()
+                .success(true)
+                .code(SuccessCode.DEPOSIT_OK.name())
+                .message(SuccessCode.DEPOSIT_OK.getMessageKey())
+                .exTxId(depositLeg.getId())
+                .build();
+    }
+
     public ExAccWithdrawRes withdraw(ExAccWithdrawReq req) {
         //멱등: 이미 처리된 키면 성공 재응답 (중복 재시도 처리)
         Transactions existing = txRepo.findByIdempotencyKeyAndOperationType(
