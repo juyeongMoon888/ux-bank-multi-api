@@ -2,7 +2,7 @@ package com.mybank.multibank.global.code;
 
 import org.springframework.http.HttpStatus;
 
-public enum RejectCode {
+public enum RejectCode implements BaseCode{
     ACCOUNT_CLOSED("reject.account_closed", HttpStatus.OK),
     ACCOUNT_FROZEN("reject.account_frozen", HttpStatus.OK)
     ;
@@ -12,5 +12,15 @@ public enum RejectCode {
     RejectCode(String message, HttpStatus httpStatus) {
         this.message = message;
         this.httpStatus = httpStatus;
+    }
+
+    @Override
+    public String getMessageKey() {
+        return message;
+    }
+
+    @Override
+    public HttpStatus getHttpStatus() {
+        return httpStatus;
     }
 }
