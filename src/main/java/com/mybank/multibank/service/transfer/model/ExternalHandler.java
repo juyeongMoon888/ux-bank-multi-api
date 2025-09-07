@@ -1,5 +1,6 @@
 package com.mybank.multibank.service.transfer.model;
 
+import com.mybank.multibank.domain.AccountStatus;
 import com.mybank.multibank.domain.BankType;
 import com.mybank.multibank.domain.TransactionStatus;
 import com.mybank.multibank.domain.account.Account;
@@ -8,6 +9,7 @@ import com.mybank.multibank.domain.transaction.TransactionRepository;
 import com.mybank.multibank.domain.transaction.Transactions;
 import com.mybank.multibank.dto.*;
 import com.mybank.multibank.global.code.ErrorCode;
+import com.mybank.multibank.global.code.RejectCode;
 import com.mybank.multibank.global.code.SuccessCode;
 import com.mybank.multibank.global.exception.user.CustomException;
 import com.mybank.multibank.repository.IdempotencyRepository;
@@ -42,6 +44,22 @@ public class ExternalHandler {
                     .approved(false)
                     .code(ErrorCode.ACCOUNT_NOT_FOUND.name())
                     .message(ErrorCode.ACCOUNT_NOT_FOUND.getMessageKey())
+                    .build();
+        }
+        // 비지니스 거절 → approved=false
+        else if (from.getStatus().equals(AccountStatus.CLOSED)) {
+            return ExAccWithdrawRes.builder()
+                    .approved(false)
+                    .code(RejectCode.ACCOUNT_CLOSED.name())
+                    .message(RejectCode.ACCOUNT_CLOSED.getMessageKey())
+                    .build();
+        }
+
+        else if (from.getStatus().equals(AccountStatus.FROZEN)) {
+            return ExAccWithdrawRes.builder()
+                    .approved(false)
+                    .code(RejectCode.ACCOUNT_FROZEN.name())
+                    .message(RejectCode.ACCOUNT_FROZEN.getMessageKey())
                     .build();
         }
 
