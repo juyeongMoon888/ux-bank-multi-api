@@ -163,6 +163,7 @@ public class ExternalHandler {
         Transactions tx = txRepo.findByIdForUpdate(req.getExTxId())
                 .orElseThrow(() -> new CustomException(ErrorCode.EXTERNAL_TX_NOT_FOUND));
 
+        //이미 CONFIRMED 상태
         if (tx.isPartnerConfirmed()) {
             return ExAccConfirmRes.builder().complete(true).successCode("ALREADY_CONFIRMED").build();
         }
