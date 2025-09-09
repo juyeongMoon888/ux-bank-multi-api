@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface TransactionRepository extends JpaRepository<Transactions, Long> {
 
     Optional<Transactions> findByIdForUpdate(long exTxId);
+
+    Optional<Transactions> findByIdempotencyKeyAndOperationType(String idempotencyKey, OperationType operationType);
 }
