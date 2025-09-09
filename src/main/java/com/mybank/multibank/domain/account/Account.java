@@ -4,9 +4,7 @@ import com.mybank.multibank.domain.AccountStatus;
 import com.mybank.multibank.domain.BankType;
 import jakarta.persistence.*;
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 
 @Table(
@@ -14,8 +12,7 @@ import lombok.Getter;
     uniqueConstraints = @UniqueConstraint(
             name = "uk_bank_account",
             columnNames = {"bank","account_number"}
-    ),
-    indexes = @Index(name="idx_external_account_bank", columnList="bank")
+    )
 )
 @Entity
 @Getter
@@ -24,7 +21,6 @@ import lombok.Getter;
 @AllArgsConstructor
 public class Account {
     protected Account() {
-
     }
 
     @Id
@@ -36,6 +32,9 @@ public class Account {
     @Column(name = "bank")
     private BankType bank;
 
+    @Setter
+    private Long balance;
+
     private String accountName;
     private Long userId;
     private String ownerName;
@@ -43,9 +42,20 @@ public class Account {
     private String phone;
     private String accountNumber;
 
+    public void deposit(Long amount) {
+        this.balance += amount;
+    }
+
+    public void withdraw(Long amount) {
+        if (balance < amount) {
+            throw new IllegalArgumentException();
+        }
+        this.balance -= amount;
+    }
+
     @Enumerated(EnumType.STRING)
     @Column(name="status")
     private AccountStatus status;
 
-    private Long balance;
+
 }
