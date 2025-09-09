@@ -2,6 +2,7 @@ package com.mybank.multibank.service.transfer.model;
 
 import com.mybank.multibank.domain.AccountStatus;
 import com.mybank.multibank.domain.BankType;
+import com.mybank.multibank.domain.FlowContext;
 import com.mybank.multibank.domain.TransactionStatus;
 import com.mybank.multibank.domain.account.Account;
 import com.mybank.multibank.domain.account.AccountRepository;
@@ -23,10 +24,10 @@ public class ExternalHandler {
     private final TransactionRepository txRepo;
     private final AccountRepository accRepo;
 
-    public ExAccDepositRes deposit(ExAccDepositReq req) {
+    public ExAccDepositRes deposit(ExAccOperationContext ctx) {
         //멱등: 이미 처리된 키면 성공 재응답 (중복 재시도 처리)
         Transactions existing = txRepo.findByIdempotencyKeyAndOperationType(
-                req.getIdempotencyKey(), OperationType.DEPOSIT).orElse(null);
+                ctx.getIdempotencyKey(), OperationType.DEPOSIT).orElse(null);
         if (existing != null) {
             return ExAccDepositRes.builder()
                     .success(true)
@@ -36,7 +37,7 @@ public class ExternalHandler {
                     .build();
         }
 
-        Account to = accRepo.findByBankAndAccountNumber(req.getToBank(), req.getToAccountNumber())
+        Account to = accRepo.findByBankAndAccountNumber(ctx.getToBank(), ctx.getToAccountNumber())
                 .orElseThrow(null);
         // 계좌 없음 → success=false
         if (to == null) {
@@ -64,31 +65,50 @@ public class ExternalHandler {
         }
 
         long before = to.getBalance();
-        to.deposit(req.getAmount());
+        to.deposit(ctx.getAmount());
 
-        //depositLeg 생성
-        Transactions depositLeg = Transactions.builder()
-                .account(to)
-                .operationType(OperationType.DEPOSIT)
-                .toBank(req.getToBank())
-                .toAccountNumber(req.getToAccountNumber())
-                .amount(req.getAmount())
-                .balanceBefore(before)
-                .balanceAfter(to.getBalance())
-                .memo(req.getMemo())
-                .idempotencyKey(req.getIdempotencyKey())
-                .fromBank(BankType.valueOf(req.getFromBank()))
-                .fromAccountNumber(req.getFromAccountNumber())
-                .transactionStatus(TransactionStatus.COMPLETED)
-                .build();
-        txRepo.save(depositLeg);
-
-        return ExAccDepositRes.builder()
-                .success(true)
-                .code(SuccessCode.DEPOSIT_OK.name())
-                .message(SuccessCode.DEPOSIT_OK.getMessageKey())
-                .exTxId(depositLeg.getId())
-                .build();
+        if (ctx.getFlow().equals(FlowContext.SIMPLE)) {
+            Transactions depositLeg = Transactions.builder()
+                    .account(to)
+                    .operationType(OperationType.DEPOSIT)
+                    .toBank(ctx.getToBank())
+                    .toAccountNumber(ctx.getToAccountNumber())
+                    .amount(ctx.getAmount())
+                    .balanceBefore(before)
+                    .balanceAfter(to.getBalance())
+                    .memo(ctx.getMemo())
+                    .idempotencyKey(ctx.getIdempotencyKey())
+                    .transactionStatus(TransactionStatus.COMPLETED)
+                    .build();
+            txRepo.save(depositLeg);
+            return ExAccDepositRes.builder()
+                    .success(true)
+                    .code(SuccessCode.DEPOSIT_OK.name())
+                    .message(SuccessCode.DEPOSIT_OK.getMessageKey())
+                    .build();
+        } else {
+            Transactions depositLeg = Transactions.builder()
+                    .account(to)
+                    .operationType(OperationType.DEPOSIT)
+                    .toBank(ctx.getToBank())
+                    .toAccountNumber(ctx.getToAccountNumber())
+                    .amount(ctx.getAmount())
+                    .balanceBefore(before)
+                    .balanceAfter(to.getBalance())
+                    .memo(ctx.getMemo())
+                    .idempotencyKey(ctx.getIdempotencyKey())
+                    .fromBank(BankType.valueOf(ctx.getFromBank()))
+                    .fromAccountNumber(ctx.getFromAccountNumber())
+                    .transactionStatus(TransactionStatus.COMPLETED)
+                    .build();
+            txRepo.save(depositLeg);
+            return ExAccDepositRes.builder()
+                    .success(true)
+                    .code(SuccessCode.DEPOSIT_OK.name())
+                    .message(SuccessCode.DEPOSIT_OK.getMessageKey())
+                    .exTxId(depositLeg.getId())
+                    .build();
+        }
     }
 
     public ExAccWithdrawRes withdraw(ExAccWithdrawReq req) {
