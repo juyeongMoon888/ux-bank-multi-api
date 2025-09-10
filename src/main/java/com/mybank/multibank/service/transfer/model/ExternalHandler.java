@@ -13,7 +13,7 @@ import com.mybank.multibank.global.code.ErrorCode;
 import com.mybank.multibank.global.code.RejectCode;
 import com.mybank.multibank.global.code.SuccessCode;
 import com.mybank.multibank.global.exception.user.CustomException;
-import com.mybank.multibank.repository.IdempotencyRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -85,6 +85,7 @@ public class ExternalHandler {
                     .success(true)
                     .code(SuccessCode.DEPOSIT_OK.name())
                     .message(SuccessCode.DEPOSIT_OK.getMessageKey())
+                    .exTxId(depositLeg.getId())
                     .build();
         } else {
             Transactions depositLeg = Transactions.builder()
@@ -178,9 +179,10 @@ public class ExternalHandler {
                 .build();
     }
 
+    @Transactional
     public ExAccConfirmRes confirm(ExAccConfirmReq req) {
         //확인 플래그만
-        Transactions tx = txRepo.findByIdForUpdate(req.getExTxId())
+        Transactions tx = txRepo.findById(req.getExTxId())
                 .orElseThrow(() -> new CustomException(ErrorCode.EXTERNAL_TX_NOT_FOUND));
 
         //이미 CONFIRMED 상태
@@ -193,9 +195,10 @@ public class ExternalHandler {
         return ExAccConfirmRes.builder().complete(true).successCode("CONFIRMED").build();
     }
 
+    @Transactional
     public ExAccCancelRes cancel(ExAccCancelReq req) {
         // 1) 출금 레그 (락) 조회
-        Transactions txW = txRepo.findByIdForUpdate(req.getExTxId())
+        Transactions txW = txRepo.findById(req.getExTxId())
                 .orElseThrow(() -> new CustomException(ErrorCode.EXTERNAL_TX_NOT_FOUND));
 
         // 2) 타입/상태 검증
