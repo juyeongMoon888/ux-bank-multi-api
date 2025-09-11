@@ -1,6 +1,7 @@
 package com.mybank.multibank.domain.account;
 
 import com.mybank.multibank.domain.AccountStatus;
+import com.mybank.multibank.domain.BankType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -8,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface AccountRepository extends JpaRepository<Account, Long> {
-    Optional<Account> findByBankAndAccountNumber(String bank, String accountNumber);
+    Optional<Account> findByBankAndAccountNumber(BankType bank, String accountNumber);
 
     Optional<Account> findByAccountNumberAndUserId(String accountNumber, Long userId);
     @Query("""

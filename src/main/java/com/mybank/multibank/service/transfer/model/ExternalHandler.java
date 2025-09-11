@@ -37,7 +37,7 @@ public class ExternalHandler {
                     .build();
         }
 
-        Account to = accRepo.findByBankAndAccountNumber(ctx.getToBank(), ctx.getToAccountNumber())
+        Account to = accRepo.findByBankAndAccountNumber(BankType.valueOf(ctx.getToBank()), ctx.getToAccountNumber())
                 .orElseThrow(null);
         // 계좌 없음 → success=false
         if (to == null) {
@@ -125,7 +125,7 @@ public class ExternalHandler {
                     .build();
         }
 
-        Account from = accRepo.findByBankAndAccountNumber(req.getFromBank(), req.getFromAccountNumber())
+        Account from = accRepo.findByBankAndAccountNumber(BankType.valueOf(req.getFromBank()), req.getFromAccountNumber())
                 .orElseThrow(null);
         // 계좌 없음 → approved=false
         if (from == null) {
@@ -219,7 +219,7 @@ public class ExternalHandler {
         }
 
         // 3) 계좌 조회 (락) 레그 기준
-        Account from = accRepo.findByBankAndAccountNumber(txW.getFromBank().name(), txW.getFromAccountNumber())
+        Account from = accRepo.findByBankAndAccountNumber(BankType.valueOf(txW.getFromBank().name()), txW.getFromAccountNumber())
                 .orElseThrow( () -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         // 4) 잔액 보상
