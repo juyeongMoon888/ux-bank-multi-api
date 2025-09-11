@@ -159,28 +159,52 @@ public class ExternalHandler {
         long before = from.getBalance();
         from.withdraw(ctx.getAmount());
 
-        Transactions withdrawLeg = Transactions.builder()
-                .account(from)
-                .operationType(OperationType.WITHDRAW)
-                .toBank(ctx.getToBank())
-                .toAccountNumber(ctx.getToAccountNumber())
-                .amount(ctx.getAmount())
-                .balanceBefore(before)
-                .balanceAfter(from.getBalance())
-                .memo(ctx.getMemo())
-                .idempotencyKey(ctx.getIdempotencyKey())
-                .fromBank(BankType.valueOf(ctx.getFromBank()))
-                .fromAccountNumber(ctx.getFromAccountNumber())
-                .transactionStatus(TransactionStatus.COMPLETED)
-                .build();
-        txRepo.save(withdrawLeg);
+        if (ctx.getFlow().equals(FlowContext.SIMPLE)) {
+            Transactions withdrawLeg = Transactions.builder()
+                    .account(from)
+                    .operationType(OperationType.WITHDRAW)
+                    .fromBank(BankType.valueOf(ctx.getFromBank()))
+                    .fromAccountNumber(ctx.getToAccountNumber())
+                    .amount(ctx.getAmount())
+                    .balanceBefore(before)
+                    .balanceAfter(from.getBalance())
+                    .memo(ctx.getMemo())
+                    .idempotencyKey(ctx.getIdempotencyKey())
+                    .transactionStatus(TransactionStatus.COMPLETED)
+                    .build();
+            txRepo.save(withdrawLeg);
 
-        return ExAccWithdrawRes.builder()
-                .approved(true)
-                .code(SuccessCode.WITHDRAW_OK.name())
-                .message(SuccessCode.WITHDRAW_OK.getMessageKey())
-                .exTxId(withdrawLeg.getId())
-                .build();
+            return ExAccWithdrawRes.builder()
+                    .approved(true)
+                    .code(SuccessCode.WITHDRAW_OK.name())
+                    .message(SuccessCode.WITHDRAW_OK.getMessageKey())
+                    .exTxId(withdrawLeg.getId())
+                    .externalBank(String.valueOf(withdrawLeg.getFromBank()))
+                    .build();
+        } else {
+            Transactions withdrawLeg = Transactions.builder()
+                    .account(from)
+                    .operationType(OperationType.WITHDRAW)
+                    .toBank(ctx.getToBank())
+                    .toAccountNumber(ctx.getToAccountNumber())
+                    .amount(ctx.getAmount())
+                    .balanceBefore(before)
+                    .balanceAfter(from.getBalance())
+                    .memo(ctx.getMemo())
+                    .idempotencyKey(ctx.getIdempotencyKey())
+                    .fromBank(BankType.valueOf(ctx.getFromBank()))
+                    .fromAccountNumber(ctx.getFromAccountNumber())
+                    .transactionStatus(TransactionStatus.COMPLETED)
+                    .build();
+            txRepo.save(withdrawLeg);
+            return ExAccWithdrawRes.builder()
+                    .approved(true)
+                    .code(SuccessCode.WITHDRAW_OK.name())
+                    .message(SuccessCode.WITHDRAW_OK.getMessageKey())
+                    .exTxId(withdrawLeg.getId())
+                    .externalBank(String.valueOf(withdrawLeg.getFromBank()))
+                    .build();
+        }
     }
 
     @Transactional
