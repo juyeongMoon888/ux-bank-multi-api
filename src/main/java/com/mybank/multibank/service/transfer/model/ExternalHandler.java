@@ -15,10 +15,12 @@ import com.mybank.multibank.global.code.SuccessCode;
 import com.mybank.multibank.global.exception.user.CustomException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ExternalHandler {
 
     private final TransactionRepository txRepo;
@@ -81,11 +83,13 @@ public class ExternalHandler {
                     .transactionStatus(TransactionStatus.COMPLETED)
                     .build();
             txRepo.save(depositLeg);
+
             return ExAccDepositRes.builder()
                     .success(true)
                     .code(SuccessCode.DEPOSIT_OK.name())
                     .message(SuccessCode.DEPOSIT_OK.getMessageKey())
                     .exTxId(depositLeg.getId())
+                    .externalBank(depositLeg.getToBank())
                     .build();
         } else {
             Transactions depositLeg = Transactions.builder()
