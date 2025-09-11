@@ -1,5 +1,6 @@
 package com.mybank.multibank.controller;
 
+import com.mybank.multibank.assembler.ExAccOperationMapper;
 import com.mybank.multibank.domain.verification.VerificationResult;
 import com.mybank.multibank.dto.*;
 import com.mybank.multibank.global.ResponseUtil;
@@ -19,8 +20,8 @@ import org.springframework.web.bind.annotation.*;
 public class ExternalAccountController {
     private final AccountService accountService;
     private final ResponseUtil responseUtil;
-    private final ValidateService validateService;
     private final ExternalHandler handler;
+    private final ExAccOperationMapper mapper;
 
     @PostMapping("/open-account")
     public ResponseEntity<?> createAccount(@RequestBody ExternalOpenAccountRequestDto dto) {
@@ -36,25 +37,23 @@ public class ExternalAccountController {
 
     @PostMapping("/deposit")
     public ExAccDepositRes deposit(@RequestBody ExAccDepositReq req) {
-        validateService.validateDeposit(req);
-        return handler.deposit(req);
+        ExAccOperationContext ctx = mapper.toDepositContext(req);
+        return handler.deposit(ctx);
     }
 
     @PostMapping("/withdraw")
     public ExAccWithdrawRes withdraw(@RequestBody ExAccWithdrawReq req) {
-        validateService.validateWithdraw(req);
-        return handler.withdraw(req);
+        ExAccOperationContext ctx = mapper.toWithdrawContext(req);
+        return handler.withdraw(ctx);
     }
 
     @PostMapping("/confirm")
     public ExAccConfirmRes confirm(@RequestBody ExAccConfirmReq req) {
-        validateService.validateConfirm(req);
         return handler.confirm(req);
     }
 
     @PostMapping("/cancel")
     public ExAccCancelRes cancel(@RequestBody ExAccCancelReq req) {
-        validateService.validateCancel(req);
         return handler.cancel(req);
     }
 
