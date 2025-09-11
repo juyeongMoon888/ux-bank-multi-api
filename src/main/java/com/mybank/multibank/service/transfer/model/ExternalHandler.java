@@ -116,10 +116,10 @@ public class ExternalHandler {
         }
     }
 
-    public ExAccWithdrawRes withdraw(ExAccWithdrawReq req) {
+    public ExAccWithdrawRes withdraw(ExAccOperationContext ctx) {
         //멱등: 이미 처리된 키면 성공 재응답 (중복 재시도 처리)
         Transactions existing = txRepo.findByIdempotencyKeyAndOperationType(
-                req.getIdempotencyKey(), OperationType.WITHDRAW).orElse(null);
+                ctx.getIdempotencyKey(), OperationType.WITHDRAW).orElse(null);
         if (existing != null) {
             return ExAccWithdrawRes.builder()
                     .approved(true)
@@ -129,7 +129,7 @@ public class ExternalHandler {
                     .build();
         }
 
-        Account from = accRepo.findByBankAndAccountNumber(BankType.valueOf(req.getFromBank()), req.getFromAccountNumber())
+        Account from = accRepo.findByBankAndAccountNumber(BankType.valueOf(ctx.getFromBank()), ctx.getFromAccountNumber())
                 .orElseThrow(null);
         // 계좌 없음 → approved=false
         if (from == null) {
@@ -157,20 +157,20 @@ public class ExternalHandler {
         }
 
         long before = from.getBalance();
-        from.withdraw(req.getAmount());
+        from.withdraw(ctx.getAmount());
 
         Transactions withdrawLeg = Transactions.builder()
                 .account(from)
                 .operationType(OperationType.WITHDRAW)
-                .toBank(req.getToBank())
-                .toAccountNumber(req.getToAccountNumber())
-                .amount(req.getAmount())
+                .toBank(ctx.getToBank())
+                .toAccountNumber(ctx.getToAccountNumber())
+                .amount(ctx.getAmount())
                 .balanceBefore(before)
                 .balanceAfter(from.getBalance())
-                .memo(req.getMemo())
-                .idempotencyKey(req.getIdempotencyKey())
-                .fromBank(BankType.valueOf(req.getFromBank()))
-                .fromAccountNumber(req.getFromAccountNumber())
+                .memo(ctx.getMemo())
+                .idempotencyKey(ctx.getIdempotencyKey())
+                .fromBank(BankType.valueOf(ctx.getFromBank()))
+                .fromAccountNumber(ctx.getFromAccountNumber())
                 .transactionStatus(TransactionStatus.COMPLETED)
                 .build();
         txRepo.save(withdrawLeg);
